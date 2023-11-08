@@ -37,7 +37,6 @@ ECData <- free_allevents(Matches)
 # Use this to clean the 'ECData' subframe, and changes the dataframe to a tibble
 ECData <- as_tibble(allclean(ECData))
 
-
 # Our dataframe contains lists; you cannot save lists as csv, so we will delete the list data columns (they are all location data, which we still have as individual x and y coordinates)
 list_variables <- ECData %>%
   select_if(is.list)
