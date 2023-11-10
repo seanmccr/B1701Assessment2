@@ -23,17 +23,17 @@ FreeCompetitions()
 # this to a tibble named 'Comp'
 Comp <- (FreeCompetitions())
 
-# This creates a variable which filters the free data to a particular set, Mens EURO 2020
+# This creates a variable which filters the free data to a particular set, Womens WC 2023
 MEC_id <- Comp %>%
-  filter(competition_gender=="male",
-         season_name==2020,
+  filter(competition_gender=="female",
+         season_name==2023,
          competition_international==TRUE)
 print(MEC_id)
 
-# Use this to list all the free matches within the Subset (Mens EURO 2020)
+# Use this to list all the free matches within the Subset (Womens WC 2023)
 Matches <- (FreeMatches(MEC_id))
 
-# Use this to load all the free match data into our Subset (Mens EURO 2020)
+# Use this to load all the free match data into our Subset (Womens WC 2023)
 ECData <- free_allevents(Matches)
 
 # Use this to clean the 'ECData' subframe, and changes the dataframe to a tibble
