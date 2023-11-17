@@ -1,10 +1,11 @@
 EXAMPLE CODE FOR PLOTTING A SHOT MAP
+# Code to provide a graphic, showing where shots were taken on the pitch, the xG of the shot (represented by colour)
+# and an arrow detailing the direction and length of the shot. 
 
-
-
-ShotsDiani = WWC23Data %>%
+ShotsPopp = WWC23Data %>%
   filter(type.name == "Shot",
-         player.name == "Kadidiatou Diani") # Filter data to include only shots by Kadidiatou Diani
+         player.name == "Alexandra Popp",
+         period != 5) # Filter data to include only shots by Kadidiatou Diani
 
 shotmapxgcolors <- c("#192780", "#2a5d9f", "#40a7d0", "#87cdcf", "#e7f8e6", "#f4ef95", "#FDE960", "#FCDC5F", "#F5B94D", "#F0983E", "#ED8A37", "#E66424", "#D54F1B", "#DC2608", "#BF0000", "#7F0000", "#5F0000")
 
@@ -31,8 +32,8 @@ ggplot() +
            y=40+10*sin(seq(-0.3*pi,0.3*pi,length.out=30)), col="black") +
   annotate("path", x=107.84-10*cos(seq(-0.3*pi,0.3*pi,length.out=30)), size = 0.6,
            y=40-10*sin(seq(-0.3*pi,0.3*pi,length.out=30)), col="black") +
-  geom_point(data = ShotsDiani, aes(x = location.x, y = location.y, fill = shot.statsbomb_xg, shape = shot.body_part.name), size = 4, alpha = 0.8) + #3
-  geom_segment(data = ShotsDiani, aes(x = location.x, y = location.y, xend = shot.end_location.x, yend = shot.end_location.y, colour = shot.statsbomb_xg), size = 1, alpha = 0.8) +
+  geom_point(data = ShotsPopp, aes(x = location.x, y = location.y, fill = shot.statsbomb_xg, shape = shot.body_part.name), size = 4, alpha = 0.8) + #3
+  geom_segment(data = ShotsPopp, aes(x = location.x, y = location.y, xend = shot.end_location.x, yend = shot.end_location.y, colour = shot.statsbomb_xg), size = 1, alpha = 0.8) +
   theme(axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
@@ -47,7 +48,7 @@ ggplot() +
         legend.direction = "horizontal",
         axis.ticks = element_blank(), aspect.ratio = c(65/100),
         plot.background = element_rect(fill = "white"), strip.text.x = element_text(size=12,family="serif")) +
-  labs(title = "Kadidiatou Diani, Shot Map", subtitle = "WWC, 2023") + #4
+  labs(title = "Alexandra Popp, Shot Map", subtitle = "WWC, 2023") + #4
   scale_fill_gradientn(colors = shotmapxgcolors, limits = c(0, 1), name = "Shot xG:", 
                        breaks = c(0, 0.25, 0.5, 0.75, 1), labels = c("0", "0.25", "0.5", "0.75", "1")) + #5
   scale_shape_manual(values = shape_mapping, name = "Body Part:") + #6 
@@ -57,12 +58,11 @@ ggplot() +
 
 
 
-
-
 GoalsDiani = WWC23Data %>%
   filter(type.name == "Shot",
          shot.outcome.name == "Goal",
-         player.name == "Kadidiatou Diani") # Filter data to include only shots by Kadidiatou Diani
+         player.name == "Kadidiatou Diani",
+         period != 5)
 
 shotmapxgcolors <- c("#192780", "#2a5d9f", "#40a7d0", "#87cdcf", "#e7f8e6", "#f4ef95", "#FDE960", "#FCDC5F", "#F5B94D", "#F0983E", "#ED8A37", "#E66424", "#D54F1B", "#DC2608", "#BF0000", "#7F0000", "#5F0000")
 
@@ -114,15 +114,65 @@ ggplot() +
   coord_flip(xlim = c(85, 125)) #8
 
 
+# CODE TO CREATE A GRAPH OF SHOTS FOR EACH PLAYER
 
 
+PlayerGoalPlots <- function(WWC23Data) {
+  player_goals <-  WWC23Data[which(WWC23Data$shot.outcome.name == "Goal"), ]
+  
+  GoalPlots <- ggplot() +
+    annotate("rect", xmin = 0, xmax = 120, ymin = 0, ymax = 80, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 0, xmax = 60, ymin = 0, ymax = 80, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 18, xmax = 0, ymin = 18, ymax = 62, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 102, xmax = 120, ymin = 18, ymax = 62, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 0, xmax = 6, ymin = 30, ymax = 50, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 120, xmax = 114, ymin = 30, ymax = 50, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 120, xmax = 120.5, ymin =36, ymax = 44, fill = NA, colour = "black", size = 0.6) +
+    annotate("rect",xmin = 0, xmax = -0.5, ymin =36, ymax = 44, fill = NA, colour = "black", size = 0.6) +
+    annotate("segment", x = 60, xend = 60, y = -0.5, yend = 80.5, colour = "black", size = 0.6)+
+    annotate("segment", x = 0, xend = 0, y = 0, yend = 80, colour = "black", size = 0.6)+
+    annotate("segment", x = 120, xend = 120, y = 0, yend = 80, colour = "black", size = 0.6)+
+    theme(rect = element_blank(), line = element_blank()) + # add penalty spot right
+    annotate("point", x = 108 , y = 40, colour = "black", size = 1.05) +
+    annotate("path", colour = "black", size = 0.6, x=60+10*cos(seq(0,2*pi,length.out=2000)),
+             y=40+10*sin(seq(0,2*pi,length.out=2000)))+ # add centre spot
+    annotate("point", x = 60 , y = 40, colour = "black", size = 1.05) +
+    annotate("path", x=12+10*cos(seq(-0.3*pi,0.3*pi,length.out=30)), size = 0.6,
+             y=40+10*sin(seq(-0.3*pi,0.3*pi,length.out=30)), col="black") +
+    annotate("path", x=107.84-10*cos(seq(-0.3*pi,0.3*pi,length.out=30)), size = 0.6,
+             y=40-10*sin(seq(-0.3*pi,0.3*pi,length.out=30)), col="black") +
+    geom_point(data = player_goals, aes(x = location.x, y = location.y, fill = shot.statsbomb_xg, shape = shot.body_part.name), size = 4, alpha = 0.8) + #3
+    geom_segment(data = player_goals, aes(x = location.x, y = location.y, xend = shot.end_location.x, yend = shot.end_location.y, colour = shot.statsbomb_xg), size = 1, alpha = 0.8) +
+    theme(axis.text.x = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          plot.caption= element_text(size=13,family="serif", hjust=0.5, vjust=0.5),
+          plot.subtitle = element_text(size = 18, family="serif", hjust = 0.5),
+          axis.text.y = element_blank(), legend.position = "top",
+          legend.title = element_text(size=22, family="serif"),
+          legend.text = element_text(size=20, family="serif"),
+          legend.margin = margin(c(20, 10, -85, 50)),
+          legend.key.size = unit(1, "cm"),
+          plot.title = element_text(margin = margin(r = 10, b = 10), face="bold",size = 26, family="serif", colour = "black", hjust = 0.5),
+          legend.direction = "horizontal",
+          axis.ticks = element_blank(), aspect.ratio = c(65/100),
+          plot.background = element_rect(fill = "white"), strip.text.x = element_text(size=12,family="serif")) +
+    labs(title = paste("Player Goal Map, WWC23:", unique(WWC23Data[["player.name"]]))) + #4
+    scale_fill_gradientn(colors = shotmapxgcolors, limits = c(0, 1), name = "Shot xG:", 
+                         breaks = c(0, 0.25, 0.5, 0.75, 1), labels = c("0", "0.25", "0.5", "0.75", "1")) + #5
+    scale_shape_manual(values = shape_mapping, name = "Body Part:") + #6 
+    scale_colour_gradientn(colors = shotmapxgcolors, limits = c(0, 1)) +
+    guides(fill = guide_colourbar(title.position = "top"), title = NULL, shape = guide_legend(override.aes = list(size = 5, fill = "black")), colour = FALSE) + #7 
+    coord_flip(xlim = c(85, 125), ylim = c(0, 80)) #8
+  return(GoalPlots)
+}
+# Plot for each player in the StrikerDataset
+players <- unique(StrikerDataset$PlayerName)
+players_data_list <- lapply(players, function(x) 
+{ 
+  subset(WWC23Data, player.name == x)
+})
 
-
-
-
-
-
-
-
+SDGoalPlots <- lapply(players_data_list, PlayerGoalPlots)
 
 
