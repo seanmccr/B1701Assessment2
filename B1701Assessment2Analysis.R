@@ -6,7 +6,12 @@
 WWC23Data <- read.csv("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Week 3/R Studio Tutorial Work/ECData.csv")
 head(WWC23Data)
 
-# Loading in libraries we may need
+# Loading in libraries and installing developer tools we may need:
+
+if (!require("devtools")) install.packages("devtools")
+devtools::install_github("jogall/soccermatics")
+
+devtools::install_github("FCrSTATS/SBpitch")
 
 library(ggplot2)
 library(devtools)
@@ -15,6 +20,9 @@ library(R.utils)
 library(StatsBombR)
 library(tibble)
 library(janitor)
+library(soccermatics)
+library(SBpitch)
+
 
 # Code to change the variable type to 'character'
 WWC23Data$position.name <- as.character(WWC23Data$position.name)
@@ -64,9 +72,10 @@ StrikerDataset <- PlayerPositions %>%
 # I.E PLAYERS BEING MOVED OUT OF POSITION (MILLIE BRIGHT AT RCF IN THE FINAL FOR 15 MINUTES)
 
 
+shotmapxgcolors <- c("#192780", "#2a5d9f", "#40a7d0", "#87cdcf", "#e7f8e6", "#f4ef95", "#FDE960", "#FCDC5F", "#F5B94D", "#F0983E", "#ED8A37", "#E66424", "#D54F1B", "#DC2608", "#BF0000", "#7F0000", "#5F0000")
+shape_mapping <- c("Right Foot" = 21, "Left Foot" = 22, "Head" = 23)
 
-WWC23Data$InPenaltyBox <- with(WWC23Data, location.x > (120 - 18) & location.x < 120 & 
-                                 location.y > (40 - 22) & location.y < (40 + 22))
+
 
 
 # ----- CODE FOR SHOTS -----
@@ -149,8 +158,6 @@ players_data_list <- lapply(players, function(x)
 })
 
 SDShotPlots <- lapply(players_data_list, PlayerShotPlots)
-
-
 
 
 # ----- CODE FOR GOALS -----
@@ -260,6 +267,39 @@ FilteredPasses <- WWC23PassesFiltered %>%
   ) %>%
   ungroup()
 
+
+# Code for penalty box passes only
+DianiPasses <- WWC23Data %>%
+  group_by(player.name == "Kadidiatou Diani") %>%
+  filter(type.name=="Pass" & player.name == "Kadidiatou Diani" & is.na(pass.outcome.name)) %>% 
+  filter(pass.end_location.x>=102 & pass.end_location.y<=62 & pass.end_location.y>=18)
+create_Pitch() +
+  geom_segment(data = DianiPasses, aes(x = location.x, y = location.y,
+                                  xend = pass.end_location.x, yend = pass.end_location.y),
+               lineend = "round", size = 0.6, arrow = arrow(length = unit(0.08, "inches"))) +
+  labs(title = "Kadidiatou Diani Passes", subtitle = "WWC23") + scale_y_reverse() +
+  coord_fixed(ratio = 105/100)
+
+
+# Code for all passes by Diani
+DianiPasses <- WWC23Data %>%
+  filter(player.name == "Kadidiatou Diani" & type.name == "Pass" & is.na(pass.outcome.name))
+create_Pitch() +
+  geom_segment(data = DianiPasses, aes(x = location.x, y = location.y,
+                                       xend = pass.end_location.x, yend = pass.end_location.y),
+               lineend = "round", size = 0.6, arrow = arrow(length = unit(0.08, "inches"))) +
+  labs(title = "Kadidiatou Diani Passes", subtitle = "WWC23") + scale_y_reverse() +
+  coord_fixed(ratio = 105/100)
+
+
+
+
+
+
+
+
+
+
 # ----- CODE FOR SHOTS INSIDE THE BOX -----
 
 # Code to determine whether the co-ordinates of a shot fall within the penalty box parameters
@@ -347,6 +387,10 @@ players_data_list <- lapply(players, function(x) {
 
 
 SDPenaltyBoxShotPlots <- lapply(players_data_list, PlayerPenaltyBoxShotPlots)
+
+
+
+
 
 
 
