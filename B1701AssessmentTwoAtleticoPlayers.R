@@ -5,6 +5,8 @@
 AtletiPD <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Atletico Madrid Data.xlsx")
 head(AtletiPD)
 
+SDTransferValueClub <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Club, Wages and Transfer Value.xlsx")
+head(SDTransferValueClub)
 # Loading in libraries and installing developer tools we may need:
 
 install.packages("readxl")

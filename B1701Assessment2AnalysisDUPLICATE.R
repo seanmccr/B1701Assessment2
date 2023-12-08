@@ -1,15 +1,10 @@
 # ----- B1701 Assessment Two | 08.11.2023 -----
 
-# ----- Loading In Tools, Libraries and Data -----
+# FILTERING AND PROCESSING 
+# Loading in and check our dataset 
+
 WWC23Data <- read.csv("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Week 3/R Studio Tutorial Work/ECData.csv")
 head(WWC23Data)
-
-# Loading in the Transfer Values, Wages and Club for players in the 'StrikerDataset'
-SDTransferValueClub <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Club, Wages and Transfer Value.xlsx")
-head(SDTransferValueClub)
-
-# Loading in Player Ages
-SDPlayerAges <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Ages.xlsx")
 
 # Loading in libraries and installing developer tools we may need:
 
@@ -27,32 +22,10 @@ library(tibble)
 library(janitor)
 library(soccermatics)
 library(SBpitch)
-library(stringr)
 
 
-# ----- Creating, Processing and Filtering Datasets -----
-# Changing code for the WWC23Data dataset
 # Code to change the variable type to 'character'
 WWC23Data$position.name <- as.character(WWC23Data$position.name)
-
-# Changing code in the 'SDTransferValueClub' dataset, which contains information related to contract dates, transfer values, wages and clubs of players in the 'StrikerDataset'.
-# Change 'Transfer Value' to numerical and replace non-numerical values with NA
-SDTransferValueClub$`Transfer Value` <- as.numeric(replace(SDTransferValueClub$`Transfer Value`, SDTransferValueClub$`Transfer Value` == "Unknown", NA))               
-SDTransferValueClub$`Salary (Yearly, Estimated)` <- as.numeric(gsub("[^0-9]", "", SDTransferValueClub$`Salary (Yearly, Estimated)`))
-
-# Code to replace 'Unknown' with NA
-SDTransferValueClub$`Contract Till`[SDTransferValueClub$`Contract Till` == "Unknown"] <- NA
-SDTransferValueClub$`Salary (Yearly, Estimated)`[SDTransferValueClub$`Salary (Yearly, Estimated)` == "Unknown"] <- NA
-
-# Convert 'Contract Till' Variable to Date
-SDTransferValueClub$`Contract Till` <- as.Date(SDTransferValueClub$`Contract Till`, format = "%d.%m.%Y")
-
-# Remove rows 73 to 100 from 'SDTransferValueClub'
-SDTransferValueClub <- SDTransferValueClub[-(73:100), ]
-
-# Renaming the variables
-SDPlayerAges <- SDPlayerAges %>% rename(player.name = "Player Name")
-
 
 # ----- CODE TO CREATE A STRIKER DATASET -----
 # Create a Strikerdataset using WWC23Data
@@ -95,18 +68,13 @@ StrikerPositions <- c('Striker', 'Center Forward', 'Right Center Forward', 'Left
 StrikerDataset <- PlayerPositions %>%
   filter(if_any(starts_with("Position"), ~ .x %in% StrikerPositions))
 
-# Selecting the 2nd, 3rd, 4th, and 5th columns from 'SDTransferValueClub'
-selected_columns <- SDTransferValueClub[, 2:5]
-# Combining the selected columns with 'StrikerDataset'
-StrikerDataset <- cbind(StrikerDataset, selected_columns)
-
-
-
 # FILTER FOR MINUTES PLAYED >= 60. THIS ELIMINATES PLAYERS WHO DID NOT FEATURE, FEATURED MINIMALLY OR PLAYERS WHO DID NOT PLAY A PARTICULAR POSITION FOR LONG
 # I.E PLAYERS BEING MOVED OUT OF POSITION (MILLIE BRIGHT AT RCF IN THE FINAL FOR 15 MINUTES)
 
+
 shotmapxgcolors <- c("#192780", "#2a5d9f", "#40a7d0", "#87cdcf", "#e7f8e6", "#f4ef95", "#FDE960", "#FCDC5F", "#F5B94D", "#F0983E", "#ED8A37", "#E66424", "#D54F1B", "#DC2608", "#BF0000", "#7F0000", "#5F0000")
 shape_mapping <- c("Right Foot" = 21, "Left Foot" = 22, "Head" = 23)
+
 
 # Creating our 'create_Pitch' function to design the parameters
 create_Pitch <- function() {
@@ -155,26 +123,6 @@ FilteredSoG <- WWC23Data %>%
   ) %>%
   ungroup() %>%
   select(player.name, Goals, ShotsOnTarget, ShotsOffTarget, TotalShots, GoalConversion)
-
-
-
-FilteredSoG <- FilteredSoG %>%
-  mutate(
-    GoalsRnk = rank(Goals, ties.method = "min"),
-    ShotsOnTargetRnk= rank(ShotsOnTarget, ties.method = "min"),
-    ShotsOffTargetRnk = rank(-ShotsOffTarget, ties.method = "min"),
-    TotalShotsRnk = rank(TotalShots, ties.method = "min"),
-    GoalConversionRnk = rank(GoalConversion, ties.method = "min"),
-  ) %>%
-  mutate(
-    WeightedGoalsRnk = GoalsRnk * 0.15,
-    WeightedShotsOnTargetRnk = ShotsOnTargetRnk * 0.25,
-    WeightedShotsOffTargetRnk = ShotsOffTargetRnk * 0.25,
-    WeightedTotalShotsRnk = TotalShotsRnk * 0.05,
-    WeightedGoalConversionRnk = GoalConversionRnk * 0.30,
-    AggregateSoGSum = WeightedGoalsRnk + WeightedShotsOnTargetRnk + WeightedShotsOffTargetRnk + WeightedTotalShotsRnk + WeightedGoalConversionRnk
-  )
-
 
 # ONLY 66 PLAYERS ARE RETURNED AS SOME STRIKERS PLAYERS DID REGISTER ANY SHOTS 
 # CUT OFF: TOP 25 - CHECK OFF PLAYERS WITH THEIR ACTUAL POSITIONS + VALUE AND WAGES
@@ -253,23 +201,6 @@ FilteredGandA <- WWC23Data %>%
             Assists = sum(pass.goal_assist, na.rm = TRUE)
   ) 
   
-# Code to add ranks for each of the variables
-FilteredGandA <- FilteredGandA %>%
-  mutate(
-    GoalsRnk = rank(Goals, ties.method = "min"),
-    xGRnk = rank(xG, ties.method = "min"),
-    AssistsRnk = rank(Assists, ties.method = "min"),
-  ) %>%
-mutate(
-  WeightedGoalsRnk = GoalsRnk * 0.450,
-  WeightedxGRnk = xGRnk * 0.250,
-  WeightedAssistsRnk = AssistsRnk * 0.300,
-  AggregateGASum = WeightedGoalsRnk + WeightedxGRnk + WeightedAssistsRnk
-)
-
-
-
-
 # Repeating code for creation of GOAL plots per player
 PlayerGoalPlots <- function(WWC23Data) {
   player_goals <-  WWC23Data[which(WWC23Data$shot.outcome.name == "Goal"), ]
@@ -421,29 +352,7 @@ FilteredPasses <- WWC23PassesFiltered %>%
     LPComp = sum(pass.length >= 30 & is.na(pass.outcome.name), na.rm = TRUE),
     LPCompPerc = LPComp / LongPass * 100
   ) %>%
-  ungroup() %>%
-  mutate(
-  TotalPassesAttemptedRnk = rank(TotalPassesAttempted, ties.method = "min"),
-  TotalPassesCompletedRnk = rank(TotalPassesCompleted, ties.method = "min"),
-  TPCompPercRnk = rank(TPCompPerc, ties.method = "min"),
-  ShortPassRnk = rank(ShortPass, ties.method = "min"),
-  SPCompRnk = rank(SPComp, ties.method = "min"),
-  SPCompPercRnk = rank(SPCompPerc, ties.method = "min"),
-  MediumPassRnk = rank(MediumPass, ties.method = "min"),
-  MPCompRnk = rank(MPComp, ties.method = "min"),
-  MPCompPercRnk = rank(MPCompPerc, ties.method = "min")
-) %>%
-  mutate(
-    WeightedTotalPassesAttemptedRnk = TotalPassesAttemptedRnk * 0.10,
-    WeightedTPCompPercRnk = TPCompPercRnk * 0.25,
-    WeightedShortPassRnk = ShortPassRnk * 0.075,
-    WeightedSPCompPercRnk = SPCompPercRnk * 0.25,
-    WeightedMediumPassRnk = MediumPassRnk * 0.075,
-    WeightedMPCompPercRnk = MPCompPercRnk * 0.25,
-    AggregatePassSum = WeightedTPCompPercRnk + WeightedSPCompPercRnk + WeightedMPCompPercRnk + WeightedTotalPassesAttemptedRnk + WeightedShortPassRnk + WeightedMediumPassRnk
-  )
- 
-
+  ungroup()
 
 # Code to create a dataset for the strikers listed of the number of passes made regarding certain types:
 FilteredPassType <- WWC23PassesFiltered %>%
@@ -456,19 +365,10 @@ FilteredPassType <- WWC23PassesFiltered %>%
     Switch = sum(pass.switch, na.rm = TRUE),
     Cutback = sum(pass.cut_back, na.rm = TRUE)
   ) %>%
-  ungroup() %>%
-  mutate(
-    ShotAssistRnk = rank(ShotAssist, ties.method = "min"),
-    ThroughBallRnk = rank(ThroughBall, ties.method = "min"),
-    CutbackRnk = rank(Cutback, ties.method = "min"),
-    AggregatePTSum = ShotAssistRnk + ThroughBallRnk + CutbackRnk
-  ) %>%
-  mutate(
-    WeightedShotAssistRnk = ShotAssistRnk * 0.4,
-    WeightedThroughBallRnk = ThroughBallRnk * 0.4,
-    WeightedCutbackRnk = CutbackRnk * 0.2,
-    AggregatePassTypeSum = WeightedShotAssistRnk + WeightedThroughBallRnk + WeightedCutbackRnk
-  )
+  ungroup()
+
+
+
 
 
 
@@ -572,28 +472,6 @@ FilteredPBoxShot <- WWC23Data %>%
          PenaltyBoxConversionRate, OverallConversionRate)
 
 
-# Code to add my ranked variables
-FilteredPBoxShot <- FilteredPBoxShot %>%
-  mutate(
-    PenaltyBoxGoalsRnk = rank(PenaltyBoxGoals, ties.method = "min"),
-    TotalGoalsRnk = rank(TotalGoals, ties.method = "min"),
-    PenaltyBoxConversionRateRnk = rank(PenaltyBoxConversionRate, ties.method = "min"),
-    OverallConversionRateRnk = rank(OverallConversionRate, ties.method = "min"),
-  ) %>%
-  mutate(
-    WeightedPenaltyBoxGoalsRnk = PenaltyBoxGoalsRnk * 0.35,
-    WeightedTotalGoalsRnk = TotalGoalsRnk * 0.15,
-    WeightedPenaltyBoxConversionRateRnk = PenaltyBoxConversionRateRnk * 0.35,
-    WeightedOverallConversionRateRnk = OverallConversionRateRnk * 0.15,
-    AggregatePBoxShotSum = WeightedPenaltyBoxGoalsRnk + WeightedTotalGoalsRnk + WeightedPenaltyBoxConversionRateRnk + WeightedOverallConversionRateRnk
-  )
-
-
-
-
-
-SumPBoxShotRnk = PenaltyBoxGoalsRnk + TotalGoalsRnk + PenaltyBoxConversionRateRnk + OverallConversionRateRnk
-
 # Repeating code to provide shot plots for each player in the StrikerDataset that is only inclusive of penalty box shots
 PlayerPenaltyBoxShotPlots <- function(WWC23Data) {
   penalty_box_shots <- WWC23Data[WWC23Data$type.name == "Shot" & mapply(isShotInPenaltyBox, WWC23Data$location.x, WWC23Data$location.y), ]
@@ -656,48 +534,6 @@ SDPenaltyBoxShotPlots <- lapply(players_data_list, PlayerPenaltyBoxShotPlots)
 
 
 
-# ----- CODE TO CREATE FINALISED STRIKERDATASET WITH KPIS, RANKS, TRANSFER INFORMATION, CLUB, AGE AND CONTRACT INFO WHERE AVAILABLE -----
-# Creating a new dataset with selected variables from multiple datasets
-FilteredFinalSD <- tibble(
-  PlayerName = StrikerDataset$PlayerName,
-  FiltGandASum = FilteredGandA$AggregateGASum,
-  FiltSatGSum = FilteredSoG$AggregateSoGSum,
-  FiltPassSum = FilteredPasses$AggregatePassSum,
-  FiltPassTypeSum = FilteredPassType$AggregatePassTypeSum,
-  FiltPBoxShotSum = FilteredPBoxShot$AggregatePBoxShotSum,
-)
-
-# Renaming 'PlayerName' column to 'player.name' in 'StrikerDataset'
-StrikerDataset <- StrikerDataset %>% rename(player.name = PlayerName)
-
-# Perform joins based on PlayerName to ensure matching rows across datasets
-FilteredFinalSD <- StrikerDataset %>%
-  left_join(FilteredGandA, by = "player.name") %>%
-  left_join(FilteredSoG, by = "player.name") %>%
-  left_join(FilteredPasses, by = "player.name") %>%
-  left_join(FilteredPassType, by = "player.name") %>%
-  left_join(FilteredPBoxShot, by = "player.name") %>%
-  select(player.name, FiltGandASum = AggregateGASum, FiltSatGSum = AggregateSoGSum,
-         FiltPassSum = AggregatePassSum, FiltPassTypeSum = AggregatePassTypeSum,
-         FiltPBoxShotSum = AggregatePBoxShotSum) %>%
-  tibble()
-
-# Code to create the FilteredFinalSD dataset
-FilteredFinalSD <- FilteredFinalSD %>%
-  mutate(
-    WeightedFiltGandASum = FiltGandASum * 0.3,
-    WeightedFiltSatGSum = FiltSatGSum * 0.25,
-    WeightedFiltPassSum = FiltPassSum * 0.15,
-    WeightedFiltPassTypeSum = FiltPassTypeSum * 0.05,
-    WeightedFiltPBoxShotSum = FiltPBoxShotSum * 0.25,
-    FinalAggregateScore = WeightedFiltGandASum + WeightedFiltSatGSum + WeightedFiltPassSum + WeightedFiltPassTypeSum + WeightedFiltPBoxShotSum
-  )
-
-# Code to add 'FinalAggregateScore' to the StrikerDataset
-StrikerDataset <- StrikerDataset %>%
-  left_join(SDPlayerAges %>% select(player.name, Age), by = "player.name")
-
-# ----- CODE TO FILTER THE STRIKERDATASET FOR OUR RELEVANT CONDITIONS -----
 
 
 
@@ -706,10 +542,4 @@ StrikerDataset <- StrikerDataset %>%
 
 
 
-# Remove the 'Age' variable
-StrikerDataset <- StrikerDataset %>%
-  select(-FinalAggregateScore.y)
 
-# Rename 'Age.1' variable to 'Age'
-StrikerDataset <- StrikerDataset %>%
-  rename(FinalAggregateScore = `FinalAggregateScore.x`)
