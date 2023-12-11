@@ -1,3 +1,10 @@
+---
+title: '202383028'
+date: "2023-12-11"
+output: html_document
+---
+
+```{r}
 # ----- B1701 Assessment Two | 202383028 | 08.11.2023 -----
 
 # ----- 1: Libraries, Packages and Developer Tools -----
@@ -7,8 +14,6 @@ if (!require("devtools")) install.packages("devtools")
 devtools::install_github("jogall/soccermatics")
 devtools::install_github("FCrSTATS/SBpitch")
 
-install.packages("ggpubr")
-install.packages("readxl")
 library(ggplot2)
 library(devtools)
 library(tidyverse)
@@ -295,12 +300,11 @@ create_Pitch <- function() {
 }
 
 
-# Plot Numbers for the 5 identified targets:
-# Blomqvist -59
-# Haug - 69
+# Blomqvist - 59
+# Haug -69
 # Ueki - 60
 # Telma -70
-# Snoeijs - 35
+# Katja - 35
 
 # ----- 5: Coding for Shots at Goal KPI -----
 
@@ -1019,6 +1023,4 @@ legend(1.1,0,
        col=1:(nrow(radar_data)-2),
        cex=0.8,
        lwd=3)
-
-
-
+```
