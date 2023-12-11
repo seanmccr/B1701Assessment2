@@ -1,23 +1,14 @@
-# ----- B1701 Assessment Two | 08.11.2023 -----
+# ----- B1701 Assessment Two | 202383028 | 08.11.2023 -----
 
-# ----- Loading In Tools, Libraries and Data -----
-WWC23Data <- read.csv("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Week 3/R Studio Tutorial Work/ECData.csv")
-head(WWC23Data)
-
-# Loading in the Transfer Values, Wages and Club for players in the 'StrikerDataset'
-SDTransferValueClub <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Club, Wages and Transfer Value.xlsx")
-head(SDTransferValueClub)
-
-# Loading in Player Ages
-SDPlayerAges <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Ages.xlsx")
-
-# Loading in libraries and installing developer tools we may need:
+# ----- 1: Libraries, Packages and Developer Tools -----
+##### 1.1: Loading in libraries, installing packages and developer tools we may need: #####
 
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("jogall/soccermatics")
-
 devtools::install_github("FCrSTATS/SBpitch")
 
+install.packages("ggpubr")
+install.packages("readxl")
 library(ggplot2)
 library(devtools)
 library(tidyverse)
@@ -28,16 +19,33 @@ library(janitor)
 library(soccermatics)
 library(SBpitch)
 library(stringr)
+library(corrplot)
+library(rstatix)
+library(fmsb)
+library(readxl)
+library(ggpubr)
 
+##### 1.2: Loading In Tools, Libraries and Data #####
+WWC23Data <- read.csv("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Week 3/R Studio Tutorial Work/ECData.csv")
+head(WWC23Data)
+# Loading in the Transfer Values, Wages and Club for players in the 'StrikerDataset'
+SDTransferValueClub <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Club, Wages and Transfer Value.xlsx")
+head(SDTransferValueClub)
+# Loading in Player Ages
+SDPlayerAges <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Player Ages.xlsx")
+head(SDPlayerAges)
+# Loading in the Atletico Madrid Womens Player Dataset
+AtletiPD <- read_xlsx("/Users/seanmccrone/Desktop/MASTERS DEGREE/Course Material/B1701/Assessment 2/Atletico Madrid Data.xlsx")
+head(AtletiPD)
 
-# ----- Creating, Processing and Filtering Datasets -----
-# Changing code for the WWC23Data dataset
+# ----- 2: Creating, Processing and Filtering Datasets  -----
+##### 2.1: Changes to the 'WWC23Data' dataset #####
 # Code to change the variable type to 'character'
 WWC23Data$position.name <- as.character(WWC23Data$position.name)
 
 # Changing code in the 'SDTransferValueClub' dataset, which contains information related to contract dates, transfer values, wages and clubs of players in the 'StrikerDataset'.
 # Change 'Transfer Value' to numerical and replace non-numerical values with NA
-SDTransferValueClub$`Transfer Value` <- as.numeric(replace(SDTransferValueClub$`Transfer Value`, SDTransferValueClub$`Transfer Value` == "Unknown", NA))               
+SDTransferValueClub$`Transfer Value` <- as.numeric(replace(SDTransferValueClub$`Transfer Value`, SDTransferValueClub$`Transfer Value` == "Unknown", NA))# Code to change data format
 SDTransferValueClub$`Salary (Yearly, Estimated)` <- as.numeric(gsub("[^0-9]", "", SDTransferValueClub$`Salary (Yearly, Estimated)`))
 
 # Code to replace 'Unknown' with NA
@@ -50,12 +58,165 @@ SDTransferValueClub$`Contract Till` <- as.Date(SDTransferValueClub$`Contract Til
 # Remove rows 73 to 100 from 'SDTransferValueClub'
 SDTransferValueClub <- SDTransferValueClub[-(73:100), ]
 
-# Renaming the variables
+# Renaming variables
 SDPlayerAges <- SDPlayerAges %>% rename(player.name = "Player Name")
 
+##### 2.2: Changes to the 'AtletiPD' and 'AtletiPDFiltStat' dataset #####
+# Code to rename numerous variables in the AtletiPD dataset
+AtletiPD <- AtletiPD %>%
+  rename(
+    MatchesPlayed = MP,
+    Pens = PK,
+    Yellow = CrdY,
+    Red = CrdR,
+    Gls = names(AtletiPD)[9],
+    Ast = names(AtletiPD)[10],
+    GA = names(AtletiPD)[11],
+    npG = names(AtletiPD)[12],
+    xG = names(AtletiPD)[17],
+    npxG = names(AtletiPD)[18],
+    xAG = names(AtletiPD)[19],
+    npxGxAG = names(AtletiPD)[20],
+    Gls90 = names(AtletiPD)[24],
+    Ast90 = names(AtletiPD)[25],
+    GA90 = names(AtletiPD)[26],
+    npG90 = names(AtletiPD)[27],
+    npGA90 = 'G+A-PK',
+    xG90 = names(AtletiPD)[29],
+    xAG90 = names(AtletiPD)[30],
+    xGxAG90 = names(AtletiPD)[31],
+    npxG90 = names(AtletiPD)[32],
+    npxGxAG90 = names(AtletiPD)[33]
+  )
 
-# ----- CODE TO CREATE A STRIKER DATASET -----
-# Create a Strikerdataset using WWC23Data
+# Filtering the dataset to include only the players where Position is 'FW' or 'FW,MF'
+AtletiPD <- AtletiPD %>% 
+  filter(Pos == "FW" | Pos == " MF,FW")
+
+# Code to create new dataset, selecting only the variables we want for analysis
+AtletiPDFiltStat <- AtletiPD[, c(1:13, 17:23, 28, 33)]
+
+# Code to add a variable to this data set, called Non-penalty Goals and Assists (npGA)
+AtletiPDFiltStat <- AtletiPDFiltStat %>%
+  mutate(npGA = npG + Ast)
+
+# Renaming variables
+AtletiPD <- AtletiPD %>%
+  rename(
+    Goals = Gls, 
+    Assists = Ast,
+    TotalMinutes = Min,
+    npxGA90 = npxGxAG90
+  )
+# Adding a new variable
+AtletiPD <- AtletiPD %>%
+  mutate(npGA = (Goals + Assists) - Pens)
+
+# Repeating this task for the AtletiPDFiltStat
+AtletiPDFiltStat <- AtletiPDFiltStat %>%
+  rename(
+    Goals = Gls, 
+    Assists = Ast,
+    TotalMinutes = Min,
+    npxGA90 = npxGxAG90,
+    npxGA = npxGxAG
+  )
+
+# Adding a new variable
+AtletiPDFiltStat <- AtletiPDFiltStat %>%
+  mutate(npGA = (Goals + Assists) - Pens)
+
+# ----- 3: Code for barplots and scatterplots of Atletico Madrid Womens Player Dataset -----
+##### 3.1: Comparison of various Striker metrics #####
+
+# Barplot of Goals and Assists
+# Code for a stacked Barplot of Goals and Assists
+AtletiBarPlot <- ggplot(AtletiPDFiltStat, aes(x = reorder(Player, -GA))) +
+  geom_bar(aes(y = Goals + Assists, fill = factor("Goals")), stat = "identity", position = "stack") +
+  geom_bar(aes(y = Assists, fill = factor("Assists")), stat = "identity", position = "stack") +
+  scale_y_continuous(breaks = seq(0, max(AtletiPDFiltStat$GA), by = 1)) +
+  labs(x = "Player", y = "Number of Goals & Assists", title = "Atletico Madrid Women Strikers: Goals Contributions", subtitle = "2022/23 Liga F Season") +
+  scale_fill_manual(values = c("Goals" = "blue", "Assists" = "red"), labels = c("Goals", "Assists")) +
+  theme_light() +
+  theme(legend.position = "right", axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(fill = guide_legend(title = NULL))
+AtletiBarPlot
+
+# Code to show the Non-penalty Goals and Assists per 90 vs the Expected Non-penalty Goals and Assists per 90
+AtletinpGA90npxGGA90 <-  ggplot(AtletiPDFiltStat, aes(x = npxGA90, y = npGA90, label = Player)) +
+  geom_text(check_overlap = FALSE, hjust = 0.5, vjust = -0.5) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red") +
+  labs(x = "Non-penalty Expected Goals + Assists per 90 minutes (npxGA90)", 
+       y = "Non-penalty Goals + Assists per 90 minutes (npGA90)", 
+       title = "Player Comparison of npGA90 vs npxGA90") +
+  scale_x_continuous(breaks = seq(floor(min(AtletiPDFiltStat$npGA90)), ceiling(max(AtletiPDFiltStat$npGA90)), by = 0.1)) +
+  theme_minimal() +
+  theme(legend.position = "right")
+AtletinpGA90npxGGA90
+
+# Code to compare the Non-Penalty Goals and Assists vs the Expected Non-Penalty Goals and Assists
+AtletinpGAnpxGGA <- ggplot(AtletiPDFiltStat, aes(x = npxGA, y = npGA, label = Player)) +
+  geom_text(check_overlap = FALSE, hjust = 0.5, vjust = -0.5) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red") +
+  labs(x = "Non-penalty Expected Goals + Assists (npxGA)", 
+       y = "Non-penalty Goals + Assists (npGA)", 
+       title = "Player Comparison of npxGA vs npGA") +
+  theme_minimal() +
+  theme(legend.position = "right")
+AtletinpGAnpxGGA
+
+# Code comparing npGA to 90 minutes played
+AtletinpGA90 <- ggplot(AtletiPDFiltStat, aes(x = `90s`, y = npGA, label = Player)) +
+  geom_text(check_overlap = FALSE, hjust = 0.5, vjust = -0.5) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red") +
+  labs(x = "90 Minutes Played", 
+       y = "Non-penalty Goals + Assists (npGA)", 
+       title = "Player Comparison of 90 Minutes Played vs npGA") +
+  theme_minimal() +
+  theme(legend.position = "right")
+AtletinpGA90
+
+# Code showing the relationship between Progressive Pass Received vs Made. As they are strikers, it is expected that
+# they will receive more progressive passes than they make.
+# Identify outliers using the interquartile range (IQR) for both progressive passes received and played.
+PrgR_Q1 <- quantile(AtletiPDFiltStat$PrgR, 0.25)
+PrgR_Q3 <- quantile(AtletiPDFiltStat$PrgR, 0.75)
+PrgR_IQR <- IQR(AtletiPDFiltStat$PrgR)
+
+PrgP_Q1 <- quantile(AtletiPDFiltStat$PrgP, 0.25)
+PrgP_Q3 <- quantile(AtletiPDFiltStat$PrgP, 0.75)
+PrgP_IQR <- IQR(AtletiPDFiltStat$PrgP)
+
+# Define the lower and upper bounds for outliers
+PrgR_Lower <- PrgR_Q1 - 1.5 * PrgR_IQR
+PrgR_Upper <- PrgR_Q3 + 1.5 * PrgR_IQR
+PrgP_Lower <- PrgP_Q1 - 1.5 * PrgP_IQR
+PrgP_Upper <- PrgP_Q3 + 1.5 * PrgP_IQR
+
+# Filter out the outliers before plotting
+AtletiPDFiltStat <- AtletiPDFiltStat %>%
+  filter(PrgR >= PrgR_Lower & PrgR <= PrgR_Upper) %>%
+  filter(PrgP >= PrgP_Lower & PrgP <= PrgP_Upper)
+
+# Scatter plot for progressive passes made and received without outliers
+AtletiPrgPMR <- ggplot(AtletiPDFiltStat, aes(x = PrgR, y = PrgP, label = Player)) +
+  geom_text(check_overlap = TRUE, hjust = 0.5, vjust = -0.5) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red") +
+  labs(x = "Progressive Passes - Received", 
+       y = "Progressive Passes - Played", 
+       title = "Player Comparison of Progressive Passes Played vs Received") +
+  theme_minimal() +
+  theme(legend.position = "right")
+AtletiPrgPMR
+
+
+# ----- 4: Code to create the 'StrikerDataset' -----
+
+# Creating our conversion functioon
 convertToSeconds <- function(minute, second) {
   minute * 60 + second
 }
@@ -100,11 +261,7 @@ selected_columns <- SDTransferValueClub[, 2:5]
 # Combining the selected columns with 'StrikerDataset'
 StrikerDataset <- cbind(StrikerDataset, selected_columns)
 
-
-
-# FILTER FOR MINUTES PLAYED >= 60. THIS ELIMINATES PLAYERS WHO DID NOT FEATURE, FEATURED MINIMALLY OR PLAYERS WHO DID NOT PLAY A PARTICULAR POSITION FOR LONG
-# I.E PLAYERS BEING MOVED OUT OF POSITION (MILLIE BRIGHT AT RCF IN THE FINAL FOR 15 MINUTES)
-
+##### 4.1: Creating our shotmap colours, pitch and shapes ##### 
 shotmapxgcolors <- c("#192780", "#2a5d9f", "#40a7d0", "#87cdcf", "#e7f8e6", "#f4ef95", "#FDE960", "#FCDC5F", "#F5B94D", "#F0983E", "#ED8A37", "#E66424", "#D54F1B", "#DC2608", "#BF0000", "#7F0000", "#5F0000")
 shape_mapping <- c("Right Foot" = 21, "Left Foot" = 22, "Head" = 23)
 
@@ -139,9 +296,17 @@ create_Pitch <- function() {
 
 
 
-# ----- CODE FOR SHOTS -----
+# Blomqvist: 59
+# Haug: 69
+# Ueki: 60
+# Telma: 70
+# Katja:
+
+
+# ----- 5: Coding for Shots at Goal KPI -----
 
 # Creating new dataset 'PlayerStats' that includes ALL players from the 'StrikerDataset'
+# Only 66 players are returned as some strikers did not register any shots
 FilteredSoG <- WWC23Data %>%
   inner_join(StrikerDataset, by = c("player.name" = "PlayerName")) %>%
   filter(period != 5,
@@ -156,8 +321,7 @@ FilteredSoG <- WWC23Data %>%
   ungroup() %>%
   select(player.name, Goals, ShotsOnTarget, ShotsOffTarget, TotalShots, GoalConversion)
 
-
-
+# Code to rank and weigh the variables that evaluate our Shots at Goal KPI
 FilteredSoG <- FilteredSoG %>%
   mutate(
     GoalsRnk = rank(Goals, ties.method = "min"),
@@ -174,10 +338,6 @@ FilteredSoG <- FilteredSoG %>%
     WeightedGoalConversionRnk = GoalConversionRnk * 0.30,
     AggregateSoGSum = WeightedGoalsRnk + WeightedShotsOnTargetRnk + WeightedShotsOffTargetRnk + WeightedTotalShotsRnk + WeightedGoalConversionRnk
   )
-
-
-# ONLY 66 PLAYERS ARE RETURNED AS SOME STRIKERS PLAYERS DID REGISTER ANY SHOTS 
-# CUT OFF: TOP 25 - CHECK OFF PLAYERS WITH THEIR ACTUAL POSITIONS + VALUE AND WAGES
 
 # Code to provide a graphic, showing where shots were taken on the pitch, the xG of the shot (represented by colour)
 # and an arrow detailing the direction and length of the shot. 
@@ -241,7 +401,7 @@ players_data_list <- lapply(players, function(x)
 SDShotPlots <- lapply(players_data_list, PlayerShotPlots)
 
 
-# ----- CODE FOR GOAL CONTRIBUTIONS-----
+# ----- 6: Code for Goal Contributions KPI ----- 
 
 # Code for a table of players, goals, xG and assists
 FilteredGandA <- WWC23Data %>%
@@ -253,7 +413,7 @@ FilteredGandA <- WWC23Data %>%
             Assists = sum(pass.goal_assist, na.rm = TRUE)
   ) 
   
-# Code to add ranks for each of the variables
+# Code to add ranks and weightings for each of the variables
 FilteredGandA <- FilteredGandA %>%
   mutate(
     GoalsRnk = rank(Goals, ties.method = "min"),
@@ -268,9 +428,7 @@ mutate(
 )
 
 
-
-
-# Repeating code for creation of GOAL plots per player
+# Repeating code for creation of Goal plots per player
 PlayerGoalPlots <- function(WWC23Data) {
   player_goals <-  WWC23Data[which(WWC23Data$shot.outcome.name == "Goal"), ]
   
@@ -330,8 +488,7 @@ players_data_list <- lapply(players, function(x)
 SDGoalPlots <- lapply(players_data_list, PlayerGoalPlots)
 
 
-
-# Repeating code for creation of ASSIST plots per player
+# Repeating code for creation of Assist plots for each player
 PlayerAssistPlots <- function(WWC23Data) {
   player_assists <-  WWC23Data[which(WWC23Data$pass.goal_assist == TRUE), ]
   
@@ -387,23 +544,14 @@ players_data_list <- lapply(players, function(x)
 
 SDAssistPlots <- lapply(players_data_list, PlayerAssistPlots)
 
+# ----- 7: Code for Pass success rates and locations KPI -----
 
-# ----- CODE FOR COMMUNICATION SKILLS -----
-
-FilteredComms <- WWC23Data %>%
-  inner_join(StrikerDataset, by = c("player.name" = "PlayerName")) %>%
-  group_by(player.name) %>%
-  summarize(MiscommunicatedPasses = sum(pass.miscommunication, na.rm = TRUE)) %>%
-  rename(PlayerName = player.name)
-
-# ----- CODE FOR PASSES -----
-
-# Create a dataset called 'WWC23PassesFiltered'
-# where 'type.name' is 'Pass'
+# Create a dataset called 'WWC23PassesFiltered', and filter for when 'type.name' is 'Pass'
 WWC23PassesFiltered <- WWC23Data %>%
   filter(type.name == "Pass")
 
 # Code to filter, measure length and group passes by player name, covering several metrics
+# along with the code to rank and then weigh these variables for our passing KPI
 FilteredPasses <- WWC23PassesFiltered %>%
   inner_join(StrikerDataset, by = c("player.name" = "PlayerName")) %>%
   group_by(player.name) %>%
@@ -444,8 +592,9 @@ FilteredPasses <- WWC23PassesFiltered %>%
   )
  
 
-
-# Code to create a dataset for the strikers listed of the number of passes made regarding certain types:
+# ----- 8: Code for Pass type KPI -----
+# Code to create a dataset for the 'StrikersDataset' of the number and type of passes made with a designated type, along with weightsings
+# and rankings for the overall KPI:
 FilteredPassType <- WWC23PassesFiltered %>%
   inner_join(StrikerDataset, by = c("player.name" = "PlayerName")) %>%
   group_by(player.name) %>%
@@ -471,80 +620,121 @@ FilteredPassType <- WWC23PassesFiltered %>%
   )
 
 
-
-
-# Code for passes, broken into successful and unsuccessful
-BlomqvistPassesSucUnsuc <- WWC23PassesFiltered %>%
-  filter(player.name == "Rebecka Blomqvist" & type.name == "Pass") %>%
-  mutate(
-    pass_successful = is.na(pass.outcome.name), # If 'pass.outcome.name' is NA, it's a successful pass
-    pass_type = case_when(
-      pass_successful ~ "Successful",
-      TRUE ~ "Unsuccessful"
+# Code for passes, broken into successful and unsuccessful, by individual players
+createPitchPlot <- function(player_name, passesData, pitchFunction) {
+  playerPasses <- passesData %>%
+    filter(player.name == player_name & type.name == "Pass") %>%
+    mutate(
+      pass_successful = is.na(pass.outcome.name), # If 'pass.outcome.name' is NA, it's a successful pass
+      pass_type = case_when(
+        pass_successful ~ "Successful",
+        TRUE ~ "Unsuccessful"
+      )
     )
-  )
+  
+  pitchFunction() +
+    geom_segment(data = playerPasses, aes(x = location.x, y = location.y,
+                                          xend = pass.end_location.x, yend = pass.end_location.y, color = pass_type),
+                 lineend = "round", size = 0.3, arrow = arrow(length = unit(0.03, "inches"))) +
+    scale_color_manual(values = c("Successful" = "black", "Unsuccessful" = "red"), name = "Pass Outcome") +
+    labs(title = paste("Passes by", player_name), subtitle = "WWC23") +
+    scale_y_reverse() +
+    coord_fixed(ratio = 80/120)
+}
 
-create_Pitch() +
-  geom_segment(data = BlomqvistPassesSucUnsuc, aes(x = location.x, y = location.y,
-                                       xend = pass.end_location.x, yend = pass.end_location.y, color = pass_type),
-               lineend = "round", size = 0.3, arrow = arrow(length = unit(0.03, "inches"))) +
-  scale_color_manual(values = c("Successful" = "black", "Unsuccessful" = "red"), name = "Pass Outcome") +
-  labs(title = "Passes by Rebecka Blomqvist", subtitle = "WWC23") +
-  scale_y_reverse() +
-  coord_fixed(ratio = 80/120)
+# Apply createPitchPlot for each player in StrikerDataset
+playerNames <- unique(StrikerDataset$player.name)
+
+# List to store each player's plot
+SDPassPlots <- list()
+
+for (player in playerNames) {
+  SDPassPlots[[player]] <- createPitchPlot(player, WWC23PassesFiltered, create_Pitch)
+}
 
 
-# Code for passes made, coloured for the different types
-DianiPasses <- WWC23PassesFiltered %>%
-  filter(player.name == "Kadidiatou Diani" & type.name == "Pass") %>%
-  mutate(
-    pass_successful = if_else(is.na(pass.outcome.name), "Successful", "Unsuccessful"),
-    pass_type = case_when(
-      pass.goal_assist == TRUE ~ "Goal Assist",
-      pass.shot_assist == TRUE ~ "Shot Assist",
-      pass.cross == TRUE ~ "Cross",
-      pass.through_ball == TRUE ~ "Through ball",
-      pass.switch == TRUE ~ "Switch",
-      pass.cut_back == TRUE ~ "Cut Back",
-      TRUE ~ "Other"
+
+# Code for the type of passes made, coloured for the different types
+# Function to create passes type plots for each player
+createPassTypesPlot <- function(player_name, passesData, pitchFunction) {
+  playerPasses <- passesData %>%
+    filter(player.name == player_name & type.name == "Pass") %>%
+    mutate(
+      pass_successful = if_else(is.na(pass.outcome.name), "Successful", "Unsuccessful"),
+      pass_type = case_when(
+        pass.goal_assist == TRUE ~ "Goal Assist",
+        pass.shot_assist == TRUE ~ "Shot Assist",
+        pass.cross == TRUE ~ "Cross",
+        pass.through_ball == TRUE ~ "Through ball",
+        pass.switch == TRUE ~ "Switch",
+        pass.cut_back == TRUE ~ "Cut Back",
+        TRUE ~ "Other"
+      )
     )
-  )
+  
+  pitchFunction() +
+    geom_segment(data = playerPasses, aes(x = location.x, y = location.y,
+                                          xend = pass.end_location.x, yend = pass.end_location.y,
+                                          color = pass_type), 
+                 lineend = "round", size = 0.3,
+                 arrow = arrow(length = unit(0.03, "inches"))) +
+    scale_color_manual(values = c("Goal Assist" = "green", "Shot Assist" = "blue",
+                                  "Cross" = "purple", "Through ball" = "orange",
+                                  "Switch" = "yellow", "Cut Back" = "red",
+                                  "Other" = "grey50"), 
+                       name = "Pass Type") +
+    labs(title = paste("All Passes by Type for", player_name), subtitle = "WWC23") +
+    scale_y_reverse() +
+    coord_fixed(ratio = 80/120)
+}
 
-create_Pitch() +
-  geom_segment(data = DianiPasses, aes(x = location.x, y = location.y,
-                                       xend = pass.end_location.x, yend = pass.end_location.y,
-                                       color = pass_type), lineend = "round", size = 0.3,
-               arrow = arrow(length = unit(0.03, "inches"))) +
-  scale_color_manual(values = c("Goal Assist" = "green", "Shot Assist" = "blue", 
-                                "Cross" = "purple", "Through ball" = "orange", "Switch" = "yellow", "Cut Back" = "red",
-                                "Other" = "black"), 
-                     name = "Pass Type") +
-  labs(title = "Kadidiatou Diani, All Passes by Type", subtitle = "WWC23") +
-  scale_y_reverse() +
-  coord_fixed(ratio = 80/120)
+# Apply createPassTypesPlot for each player in StrikerDataset
+playerNames <- unique(StrikerDataset$player.name)
+
+# List to store each player's pass type plot
+SDPassTypesPlots <- list()
+
+for (player in playerNames) {
+  SDPassTypesPlots[[player]] <- createPassTypesPlot(player, WWC23PassesFiltered, create_Pitch)
+}
 
 
 # Code to create a plot of the density of passes made 
-# Creating our dataset with the player we want
-DianiPassesDensity <- WWC23Data %>%
-  filter(player.name == "Kadidiatou Diani" & type.name == "Pass")
-DianiPassesDensitymap <- create_Pitch() + 
-  stat_density_2d(
-    data = DianiPassesDensity,
-    aes(x = location.x, y = location.y, fill = ..level.., alpha = ..level..),
-    geom = "polygon",
-    bins = 50
-  ) +
-  scale_fill_viridis_c(name = "Pass Density") +
-  scale_alpha(range = c(0.1, 0.7), guide = FALSE) +
-  scale_y_reverse() +
-  coord_fixed(ratio = 80 / 120) +
-  labs(title = "Pass Heatmap for Kadidiatou Diani", subtitle = "Density of Pass Locations")
+# Function to create pass density plots for each player
+createPassDensityPlot <- function(player_name, passesData, pitchFunction) {
+  playerPassesDensity <- passesData %>%
+    filter(player.name == player_name & type.name == "Pass")
+  
+  playerPassesDensitymap <- pitchFunction() + 
+    stat_density_2d(
+      data = playerPassesDensity,
+      aes(x = location.x, y = location.y, fill = ..level.., alpha = ..level..),
+      geom = "polygon",
+      bins = 50
+    ) +
+    scale_fill_viridis_c(name = "Pass Density") +
+    scale_alpha(range = c(0.1, 0.7), guide = FALSE) +
+    scale_y_reverse() +
+    coord_fixed(ratio = 80 / 120) +
+    labs(title = paste("Pass Density Heatmap for ", player_name, sep = ""), subtitle = "WWC23")
+  
+  return(playerPassesDensitymap)
+}
 
-DianiPassesDensitymap
+# Assuming StrikerDataset and WWC23Data are already loaded in the environment
+# Apply createPassDensityPlot for each player in StrikerDataset
+playerNames <- unique(StrikerDataset$player.name)
+
+# List to store each player's pass density plot
+SDPassDensityPlots <- list()
+
+for (player in playerNames) {
+  SDPassDensityPlots[[player]] <- createPassDensityPlot(player, WWC23PassesFiltered, create_Pitch)
+}
 
 
-# ----- CODE FOR SHOTS INSIDE THE BOX -----
+
+# ----- 9: Code for Penalty Box Shots KPI -----
 
 # Code to determine whether the co-ordinates of a shot fall within the penalty box parameters
 isShotInPenaltyBox <- function(x, y) {
@@ -570,9 +760,7 @@ FilteredPBoxShot <- WWC23Data %>%
   ungroup() %>%
   select(player.name, PenaltyBoxShots, TotalShots, PenaltyBoxGoals, TotalGoals, 
          PenaltyBoxConversionRate, OverallConversionRate)
-
-
-# Code to add my ranked variables
+# Code to add my ranked and weighted variables
 FilteredPBoxShot <- FilteredPBoxShot %>%
   mutate(
     PenaltyBoxGoalsRnk = rank(PenaltyBoxGoals, ties.method = "min"),
@@ -589,12 +777,7 @@ FilteredPBoxShot <- FilteredPBoxShot %>%
   )
 
 
-
-
-
-SumPBoxShotRnk = PenaltyBoxGoalsRnk + TotalGoalsRnk + PenaltyBoxConversionRateRnk + OverallConversionRateRnk
-
-# Repeating code to provide shot plots for each player in the StrikerDataset that is only inclusive of penalty box shots
+# Repeating code for penalty box shots
 PlayerPenaltyBoxShotPlots <- function(WWC23Data) {
   penalty_box_shots <- WWC23Data[WWC23Data$type.name == "Shot" & mapply(isShotInPenaltyBox, WWC23Data$location.x, WWC23Data$location.y), ]
   
@@ -645,28 +828,18 @@ PlayerPenaltyBoxShotPlots <- function(WWC23Data) {
   return(PenaltyBoxShotPlots)
 }
 
-
 players <- unique(StrikerDataset$PlayerName)
 players_data_list <- lapply(players, function(x) {
   subset(WWC23Data, player.name == x)
 })
 
-
 SDPenaltyBoxShotPlots <- lapply(players_data_list, PlayerPenaltyBoxShotPlots)
 
 
 
-# ----- CODE TO CREATE FINALISED STRIKERDATASET WITH KPIS, RANKS, TRANSFER INFORMATION, CLUB, AGE AND CONTRACT INFO WHERE AVAILABLE -----
-# Creating a new dataset with selected variables from multiple datasets
-FilteredFinalSD <- tibble(
-  PlayerName = StrikerDataset$PlayerName,
-  FiltGandASum = FilteredGandA$AggregateGASum,
-  FiltSatGSum = FilteredSoG$AggregateSoGSum,
-  FiltPassSum = FilteredPasses$AggregatePassSum,
-  FiltPassTypeSum = FilteredPassType$AggregatePassTypeSum,
-  FiltPBoxShotSum = FilteredPBoxShot$AggregatePBoxShotSum,
-)
 
+# ----- 10: Code to create finalised 'StrikerDataset' with KPIs, rankings, transfer information, domestic club, age and contract information where available -----
+# Creating a new dataset with selected variables from multiple datasets
 # Renaming 'PlayerName' column to 'player.name' in 'StrikerDataset'
 StrikerDataset <- StrikerDataset %>% rename(player.name = PlayerName)
 
@@ -682,7 +855,7 @@ FilteredFinalSD <- StrikerDataset %>%
          FiltPBoxShotSum = AggregatePBoxShotSum) %>%
   tibble()
 
-# Code to create the FilteredFinalSD dataset
+# Code to create the FilteredFinalSD dataset, where we then apply the weightings for each of the KPIs, determined by assessed relevance to the play style, position and needs of the time
 FilteredFinalSD <- FilteredFinalSD %>%
   mutate(
     WeightedFiltGandASum = FiltGandASum * 0.3,
@@ -695,21 +868,158 @@ FilteredFinalSD <- FilteredFinalSD %>%
 
 # Code to add 'FinalAggregateScore' to the StrikerDataset
 StrikerDataset <- StrikerDataset %>%
-  left_join(SDPlayerAges %>% select(player.name, Age), by = "player.name")
+  left_join(FilteredFinalSD %>% select(player.name, FinalAggregateScore), by = "player.name")
 
-# ----- CODE TO FILTER THE STRIKERDATASET FOR OUR RELEVANT CONDITIONS -----
+# Code to check the number of rows match
+# Verifying that the number of rows in both datasets is the same
+if (nrow(StrikerDataset) == nrow(SDPlayerAges)) {
+  StrikerDataset$Age <- SDPlayerAges$Age
+  
+} else {
+  stop("The number of rows in StrikerDataset and SDPlayerAges does not match.")
+}
+
+
+# ----- 11: Code to filter the finalised 'StrikerDataset' for our relevant conditions -----
+# Code to filter the database for our set conditions; 28 or under, 120000 or under in value.
+StrikerDatasetConditions <- StrikerDataset %>%
+  filter(Age <= 28, (`Transfer Value` <= 120000 | is.na(`Transfer Value`)), !is.na(FinalAggregateScore))
+
+# Sort StrikerDatasetConditions by 'FinalAggregateScore', and filter so it only includes the top 10 players by score
+Top10Players <- StrikerDatasetConditions %>%
+  arrange(-FinalAggregateScore) %>%
+  slice(1:10)
+
+
+# ----- 12: Code to create the minutes and matches played for each player ----- 
+# Create a dataset called 'MatchesPlayed'
+MatchesPlayed <- WWC23Data %>%
+  group_by(player.name) %>%
+  summarize(NumMatchesPlayed = n_distinct(match_id)) %>%
+  ungroup()
+
+# Calculate total minutes played for each player
+TotalMinutesPlayed <- WWC23Data %>%
+  group_by(match_id, player.name) %>%
+  summarize(
+    StartMinute = min(minute + second / 60, na.rm = TRUE),
+    EndMinute = max(minute + second / 60, na.rm = TRUE)
+  ) %>%
+  group_by(player.name) %>%
+  summarize(TotalMinutes = sum(EndMinute - StartMinute, na.rm = TRUE)) %>%
+  ungroup()
+
+# Combining both datasets
+MatchesPlayed <- left_join(MatchesPlayed, TotalMinutesPlayed, by = "player.name")
+#Filter out player names that are 'NA'
+MatchesMinutesPlayed <- MatchesPlayed %>%
+  filter(!is.na(player.name))
+
+# Filter 'MatchesMinutesPlayed' to only include players present in 'StrikerDataset'
+MatchesMinutesPlayed <- MatchesMinutesPlayed %>%
+  semi_join(StrikerDataset, by = "player.name")
+
+
+# ----- 13: Code to compare npGA90 against it's 'expected'/x equivalent for the top 5 selected players & the current Atletico Madrid forwards.
+# Code to create the 'Top5AtletiComparison' dataset
+Top5AtletiComparison <- MatchesMinutesPlayed %>%
+  semi_join(Top10Players, by = "player.name") %>%
+  left_join(FilteredGandA %>% select(player.name, Goals, xG, Assists), by = "player.name") %>%
+  select(player.name, TotalMinutes, Goals, xG, Assists)
+
+# Creating a new variable
+Top5AtletiComparison <- Top5AtletiComparison %>%
+  mutate(npG90 = ifelse(Goals > 0, (Goals / (TotalMinutes / 90)), 0))
+
+# Create new variables 'npGA' and 'npGA90' in the 'Top5AtletiComparison' dataset
+Top5AtletiComparison <- Top5AtletiComparison %>%
+  mutate(
+    npGA = Goals + Assists,
+    npGA90 = ifelse(npGA > 0, (npGA / (TotalMinutes / 90)), 0)
+  )
+# New variables
+Top5AtletiComparison <- Top5AtletiComparison %>%
+  mutate(
+    npxG90 = xG / (TotalMinutes / 90),
+    npxGA90 = (xG + Assists) / (TotalMinutes / 90)
+  ) 
+# Renaming and filtering our identified 5 players
+Top5AtletiComparisons2 <- Top5AtletiComparison %>%
+  rename(Player = player.name) %>%
+  filter(Player %in% c("Telma Raquel Velosa Encarnação", "Riko Ueki", "Sophie Roman Haug", "Rebecka Blomqvist", "Katja Snoeijs"))
+
+# Code to find the common variable names in both datasets
+common_vars <- intersect(names(Top5AtletiComparisons2), names(AtletiPD))
+
+# Filter the AtletiPD dataset to only include the common variables
+AtletiPD_filtered <- AtletiPD[, common_vars]
+
+# Combine the datasets, including only the common variables
+# Using rbind() since we are combining rows and we have made sure the columns match
+Top5AtletiComparisonsFinal <- rbind(Top5AtletiComparisons2, AtletiPD_filtered)
+
+# Code to create a scatterplot combining top 5 players with current players Atletico Madrid players
+Top5AtletiCompFinalnpxGA90 <-  ggplot(Top5AtletiComparisonsFinal, aes(x = npxGA90, y = npGA90, label = Player)) +
+  geom_text(check_overlap = FALSE, hjust = 0.5, vjust = -0.5) +
+  geom_point() +
+  geom_smooth(method = lm, color = "red") +
+  labs(x = "Non-penalty Expected Goals + Assists per 90 minutes (npxGA90)", 
+       y = "Non-penalty Goals + Assists per 90 minutes (npGA90)", 
+       title = "Player Comparison of npGA90 vs npxGA90") +
+  scale_x_continuous(breaks = seq(floor(min(Top5AtletiComparisonsFinal$npGA90)), ceiling(max(Top5AtletiComparisonsFinal$npGA90)), by = 0.1)) +
+  theme_minimal() +
+  theme(legend.position = "right")
+Top5AtletiCompFinalnpxGA90
+
+
+# ----- 13: Code to run correlation of the 5 KPI's used to assess potential targets ----- 
+# Correlation matrix code
+FiltKPICorrelation <-cor(FilteredFinalSD[,c(2:6)],use="complete.obs")
+corrplot(FiltKPICorrelation, method="color")
+
+FiltKPICorr1 <- FilteredFinalSD %>% cor_test(FiltPBoxShotSum, FiltGandASum)
+print(FiltKPICorr1)
+
+
+# ----- 14: Code to create a radar plot of the 5 KPI scores for our identified 5 players -----
+# Code to select our top 5 players from the FilteredFinalSD dataset
+FilteredFinalSDTop5 <- FilteredFinalSD %>%
+  semi_join(Top5AtletiComparisons2, by = c("player.name" = "Player"))
+
+# Define the columns to normalize
+columns_to_normalize <- c("FiltGandASum","FiltSatGSum","FiltPassSum","FiltPassTypeSum","FiltPBoxShotSum")
+
+# Compute the maximum values for the specified columns
+max_values <- apply(FilteredFinalSDTop5[,columns_to_normalize], 2, max,na.rm=TRUE)
+
+# Normalize the specified columns (column values / max_values)
+normalized_columns <- sweep(FilteredFinalSDTop5[, columns_to_normalize], 2, max_values, "/")
+colnames(normalized_columns) <- paste('Norm', colnames(normalized_columns), sep = '_')
+
+# Add the normalized columns back to the TopCyclist data frame
+FilteredFinalSDTop5 <- cbind(FilteredFinalSDTop5, normalized_columns)
 
 
 
+radar_data <- FilteredFinalSDTop5[,c("Norm_FiltGandASum", "Norm_FiltSatGSum", "Norm_FiltPassSum", "Norm_FiltPassTypeSum", "Norm_FiltPBoxShotSum", "player.name")]
+
+
+radar_data <- data.frame(FiltGandASum = c(1, 0, radar_data$Norm_FiltGandASum),
+                         FiltSatGSum = c(1, 0, radar_data$Norm_FiltSatGSum),
+                         FiltPassSum = c(1, 0, radar_data$Norm_FiltPassSum),
+                         FiltPassTypeSum = c(1, 0, radar_data$Norm_FiltPassTypeSum),
+                         FiltPBoxShotSum = c(1,0, radar_data$Norm_FiltPBoxShotSum),
+                         row.names=c("max","min",as.character(radar_data$player.name)))
+
+radar_plot <- radarchart(
+  radar_data)
+
+# Code to add our legend in
+legend(1.1,0,
+       legend=rownames(radar_data)[3:nrow(radar_data)],
+       col=1:(nrow(radar_data)-2),
+       cex=0.8,
+       lwd=3)
 
 
 
-
-
-# Remove the 'Age' variable
-StrikerDataset <- StrikerDataset %>%
-  select(-FinalAggregateScore.y)
-
-# Rename 'Age.1' variable to 'Age'
-StrikerDataset <- StrikerDataset %>%
-  rename(FinalAggregateScore = `FinalAggregateScore.x`)
