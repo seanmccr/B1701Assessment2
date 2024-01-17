@@ -3,12 +3,10 @@
 # ----- 1: Libraries, Packages and Developer Tools -----
 ##### 1.1: Loading in libraries, installing packages and developer tools we may need: #####
 
-if (!require("devtools")) install.packages("devtools")
+
 devtools::install_github("jogall/soccermatics")
 devtools::install_github("FCrSTATS/SBpitch")
 
-install.packages("ggpubr")
-install.packages("readxl")
 library(ggplot2)
 library(devtools)
 library(tidyverse)
@@ -1019,6 +1017,31 @@ legend(1.1,0,
        col=1:(nrow(radar_data)-2),
        cex=0.8,
        lwd=3)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
